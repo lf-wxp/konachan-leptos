@@ -67,5 +67,8 @@ jobs:
       - name: Release build
         run: trunk build --release --features web
 
+      # The safe build reuses `Trunk.toml`: the only difference is the cargo
+      # feature, which is also the compile-time default for the runtime flag
+      # (see `src/utils/config.rs`), so no separate Trunk config is needed.
       - name: Release build (safe mode)
-        run: trunk build --release --features safe --config Trunk.safe.toml
+        run: trunk build --release --features safe
