@@ -73,7 +73,7 @@ serde_json = "1.0.154"
 # the only other thing holding this dependency still, so running without
 # `--locked` (or regenerating the lock file) would otherwise silently move the
 # desktop build to a newer commit.
-tauri-sys = { git = "https://github.com/JonasKruckenberg/tauri-sys", features = ["all"], rev = "b2fd7a1f65d1bc84ab039af8f3219bbacb799e97", optional = true }
+tauri-sys = { git = "https://github.com/JonasKruckenberg/tauri-sys", features = ["all"], rev = "e1a4d049def58d8c544f01a2be0c0849a55025ef", optional = true }
 thiserror = "2.0"
 wasm-bindgen = "0.2.130"
 wasm-bindgen-futures = "0.4.80"

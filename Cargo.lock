@@ -985,6 +985,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "once_cell"
+version = "1.21.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
+
+[[package]]
 name = "or_poisoned"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1543,8 +1549,8 @@ dependencies = [
 
 [[package]]
 name = "tauri-sys"
-version = "0.2.4"
-source = "git+https://github.com/JonasKruckenberg/tauri-sys?rev=b2fd7a1f65d1bc84ab039af8f3219bbacb799e97#b2fd7a1f65d1bc84ab039af8f3219bbacb799e97"
+version = "0.2.5"
+source = "git+https://github.com/JonasKruckenberg/tauri-sys?rev=e1a4d049def58d8c544f01a2be0c0849a55025ef#e1a4d049def58d8c544f01a2be0c0849a55025ef"
 dependencies = [
  "derive_more",
  "futures",
@@ -1553,8 +1559,10 @@ dependencies = [
  "send_wrapper",
  "serde",
  "serde-wasm-bindgen",
+ "serde_json",
  "serde_repr",
  "thiserror 2.0.21",
+ "tracing",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]
@@ -1665,6 +1673,37 @@ name = "toml_writer"
 version = "1.2.0+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "009dbb7700f11c55ef83aebbe4c0e9cf1f1ac0844bd8d6f00dc38f302026e13a"
+
+[[package]]
+name = "tracing"
+version = "0.1.44"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
+dependencies = [
+ "pin-project-lite",
+ "tracing-attributes",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-attributes"
+version = "0.1.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7490cfa5ec963746568740651ac6781f701c9c5ea257c58e057f3ba8cf69e8da"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "tracing-core"
+version = "0.1.36"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
+dependencies = [
+ "once_cell",
+]
 
 [[package]]
 name = "typed-builder"
