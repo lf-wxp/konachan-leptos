@@ -1,0 +1,8 @@
+# Pinned to the same minor version as `rust-version` in Cargo.toml and the
+# `rust` image used by the Dockerfile, so local builds, CI and the image agree
+# on the compiler. Use the `1.94` channel rather than `stable` so that a new
+# release cannot silently change the compiler under an existing checkout.
+[toolchain]
+channel = "1.94"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]

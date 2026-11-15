@@ -1,0 +1,1070 @@
+// Lightbox shell. The legacy side-panel rules stay in `_components.scss`;
+// these rules place the same controls in the viewing room.
+
+.lx-app {
+  // Shared chrome for the two control surfaces: the plate action cluster and
+  // the bottom dock. Keeping one set of tones is what makes them read as the
+  // same layer instead of two unrelated dark strips. Both are translucent, so
+  // the wallpaper behind keeps showing through.
+  --lx-chrome: rgba(9, 10, 11, 0.52);
+  --lx-chrome-solid: rgba(9, 10, 11, 0.6);
+  --lx-hair: rgba(255, 255, 255, 0.16);
+  --lx-hair-soft: rgba(255, 255, 255, 0.08);
+  --lx-ink: #f2f2f2;
+  --lx-ink-dim: rgba(255, 255, 255, 0.62);
+  --lx-ink-mute: rgba(255, 255, 255, 0.36);
+  --lx-accent: var(--theme-base-color);
+  --lx-ease: 140ms cubic-bezier(0.2, 0, 0, 1);
+  // One gap and one radius for every block. `--lx-gap` is mirrored by `GAP` in
+  // `components/stage.rs`, which writes the plate and rail geometry.
+  --lx-gap: 12px;
+  --lx-radius: 6px;
+
+  position: relative;
+  block-size: 100vh;
+  inline-size: 100vw;
+  overflow: hidden;
+  color: #f2f2f2;
+  background: #111;
+  font-family: ZagRegular, sans-serif;
+}
+
+.lx-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+// `.bk-background` and `.bk-wallpaper` ship with `z-index: -1`, which would put
+// them behind the shell's own solid colour. Lifting them to 0 keeps the photo
+// under the scrim and above the paint.
+.lx-app .bk-background,
+.lx-app .bk-wallpaper {
+  z-index: 0;
+  pointer-events: none;
+}
+
+.lx-stage {
+  position: relative;
+  z-index: 1;
+  block-size: 100%;
+}
+
+.lx-top {
+  position: absolute;
+  top: var(--lx-gap);
+  left: var(--lx-gap);
+  right: var(--lx-gap);
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  // Fixed height: the plate and rail are positioned below it from the same
+  // number in `stage.rs` (`TOP_BAR`).
+  block-size: 28px;
+  pointer-events: none;
+}
+
+.lx-mark,
+.lx-sample {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  // Fills the strip, so the gap to the plate below is the same 12px as
+  // everywhere else instead of the chip's own height.
+  block-size: 100%;
+  background: var(--lx-chrome);
+  border-radius: var(--lx-radius);
+  padding: 0 10px;
+}
+
+.lx-mark strong {
+  letter-spacing: 0.42em;
+  font-weight: 590;
+  font-size: 13px;
+}
+
+.lx-mark span,
+.lx-sample em {
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  font-style: normal;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.lx-swatch {
+  display: block;
+  inline-size: 8px;
+  block-size: 18px;
+}
+
+.lx-swatch--base { background: var(--theme-base-color); }
+.lx-swatch--primary { background: var(--theme-primary-color); }
+.lx-swatch--ancillary { background: var(--theme-ancillary-color); }
+
+.lx-plate {
+  position: absolute;
+  left: var(--lx-gap);
+  overflow: hidden;
+  // Translucent, so the wallpaper behind shows through the parts the picture
+  // does not cover.
+  background: rgba(8, 9, 10, 0.3);
+  border-radius: var(--lx-radius);
+  // The plate gives way to the rail instead of snapping: the inline style
+  // rewrites `right` whenever the rail changes density or widens on hover.
+  transition: right 240ms var(--lx-ease), bottom 240ms var(--lx-ease);
+}
+
+.lx-plate .bk-thumb,
+.lx-plate .bk-image,
+.lx-plate .bk-thumb img,
+.lx-rail .bk-thumb,
+.lx-rail .bk-image,
+.lx-rail .bk-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.lx-plate .bk-thumb img,
+.lx-rail .bk-thumb img {
+  object-fit: cover;
+  display: block;
+}
+
+// The tile carries a 5px radius of its own; every block uses one value here.
+.lx-plate .bk-thumb .bk-image,
+.lx-rail .bk-thumb .bk-image {
+  border-radius: var(--lx-radius);
+}
+
+// The rail cuts straight to the loaded thumbnail: the shared `fadeIn` there
+// fires on a page turn for every slit at once, which reads as a flash.
+.lx-rail .bk-thumb .bk-image > img {
+  opacity: 1;
+  animation: none;
+}
+
+// The plate cross-fades instead. The frame being replaced is kept on the
+// `--under` layer, and the incoming one is keyed so the browser rebuilds the
+// node; that is what makes the entry animation run on every swap rather than
+// only when the previous <img> happened to be replaced anyway.
+.lx-hero {
+  position: absolute;
+  inset: 0;
+}
+
+.lx-hero .bk-thumb {
+  position: absolute;
+  inset: 0;
+}
+
+.lx-hero-under {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+// `to` is spelled out: keyframes without one take the underlying value, and
+// the tile's underlying opacity is 0 until it is marked loaded.
+@keyframes lx-hero-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lx-hero .bk-thumb .bk-image > img.loaded,
+.lx-hero .bk-thumb .bk-image > img.error {
+  opacity: 1;
+  animation: lx-hero-in 320ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.lx-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  block-size: 1px;
+  background: var(--theme-base-color);
+  animation: lx-scan 8.5s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes lx-scan {
+  from { top: 0; }
+  to { top: 100%; }
+}
+
+.lx-tick {
+  position: absolute;
+  inline-size: 18px;
+  block-size: 18px;
+  pointer-events: none;
+  border: 0 solid rgba(255, 255, 255, 0.45);
+}
+
+.lx-tick--tl { top: 10px; left: 10px; border-top-width: 1px; border-left-width: 1px; border-color: var(--theme-base-color); }
+.lx-tick--tr { top: 10px; right: 10px; border-top-width: 1px; border-right-width: 1px; }
+.lx-tick--bl { bottom: 10px; left: 10px; border-bottom-width: 1px; border-left-width: 1px; }
+.lx-tick--br { bottom: 10px; right: 10px; border-bottom-width: 1px; border-right-width: 1px; }
+
+// Action cluster on the plate: one segmented unit, primary task first, hairline
+// separated so the two halves read as one control and not two floating chips.
+.lx-actions {
+  position: absolute;
+  right: var(--lx-gap);
+  bottom: var(--lx-gap);
+  z-index: 2;
+  display: flex;
+  overflow: hidden;
+  background: var(--lx-chrome-solid);
+  border: 1px solid var(--lx-hair);
+  border-radius: var(--lx-radius);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+.lx-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  block-size: 34px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--lx-ink-dim);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--lx-ease), background-color var(--lx-ease);
+}
+
+.lx-btn + .lx-btn {
+  border-inline-start: 1px solid var(--lx-hair);
+}
+
+.lx-btn svg {
+  flex: 0 0 auto;
+  inline-size: 13px;
+  block-size: 13px;
+}
+
+.lx-btn__key {
+  padding: 1px 4px;
+  border: 1px solid var(--lx-hair-soft);
+  color: var(--lx-ink-mute);
+  font: inherit;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.lx-btn:hover:not(:disabled) {
+  color: var(--lx-ink);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.lx-btn:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.lx-btn:focus-visible {
+  outline: 1px solid var(--lx-accent);
+  outline-offset: -1px;
+}
+
+// The theme accent is sampled from the wallpaper, so it is mixed towards the
+// ink: the hue survives, the contrast does not depend on the picture.
+.lx-btn--primary {
+  color: var(--lx-ink);
+  box-shadow: inset 0 -2px 0 var(--lx-accent);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--lx-accent) 62%, var(--lx-ink));
+}
+
+.lx-btn--primary svg {
+  color: var(--lx-ink);
+  color: color-mix(in srgb, var(--lx-accent) 62%, var(--lx-ink));
+}
+
+.lx-btn:disabled {
+  color: var(--lx-ink-mute);
+  cursor: default;
+}
+
+.lx-btn:disabled .lx-btn__key {
+  opacity: 0.4;
+}
+
+.lx-btn--primary:disabled {
+  box-shadow: inset 0 -2px 0 var(--lx-hair);
+}
+
+.lx-btn--primary:disabled svg {
+  color: var(--lx-ink-mute);
+}
+
+.lx-stage--narrow .lx-btn {
+  block-size: 40px;
+  padding: 0 14px;
+}
+
+.lx-stage--narrow .lx-btn__key {
+  display: none;
+}
+
+// The cluster owns the bottom-right corner, so the frame tick steps aside.
+.lx-plate:has(.lx-actions) .lx-tick--br {
+  opacity: 0;
+}
+
+.lx-lang,
+.lx-density button,
+.lx-tag,
+.lx-empty button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--lx-ink-dim);
+  cursor: pointer;
+  font: inherit;
+  transition: color var(--lx-ease), background-color var(--lx-ease);
+}
+
+.lx-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.lx-empty strong {
+  font-size: 22px;
+  letter-spacing: 0.08em;
+}
+
+.lx-empty button {
+  border-bottom: 1px solid currentcolor;
+  background: transparent;
+}
+
+.lx-rail {
+  position: absolute;
+  z-index: 2;
+  gap: 2px;
+  padding: 0;
+  overflow: auto;
+  // No panel of its own: the slits float on whatever is behind them.
+  background: transparent;
+  border-radius: var(--lx-radius);
+  // Same curve as the plate, so the two move as one.
+  transition: width 240ms var(--lx-ease), height 240ms var(--lx-ease);
+}
+
+.lx-density--tight .lx-rail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.lx-density--gallery .lx-rail,
+.lx-density--cinema .lx-rail {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.lx-stage--narrow .lx-rail {
+  display: flex;
+  grid-template-columns: none;
+}
+
+.lx-stage--narrow.lx-density--cinema .lx-rail {
+  display: none;
+}
+
+.lx-slit {
+  position: relative;
+  min-inline-size: 0;
+  min-block-size: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  // Only visible while a thumbnail is still loading; translucent like the rest
+  // so the wallpaper keeps showing through.
+  background: rgba(10, 11, 12, 0.42);
+  cursor: pointer;
+  border-radius: var(--lx-radius);
+  // A permanent, quiet hierarchy: the slit on the plate is the only one at full
+  // strength, even before the pointer reaches the rail.
+  opacity: 0.86;
+  // Keeps the slit that is scrolled into view clear of the rail's edge.
+  scroll-margin: 10px;
+  transition: opacity var(--lx-ease), outline-color var(--lx-ease);
+}
+
+.lx-stage--narrow .lx-slit {
+  flex: 0 0 auto;
+  inline-size: 78px;
+  block-size: 100%;
+}
+
+.lx-stage--narrow.lx-density--tight .lx-slit {
+  inline-size: 56px;
+}
+
+// Everything that is not on the plate steps back while the rail is in use, so
+// the pair "thumbnail on screen <-> thumbnail under the cursor" is obvious.
+.lx-rail:hover .lx-slit {
+  opacity: 0.5;
+}
+
+.lx-rail:hover .lx-slit:hover,
+.lx-rail:hover .lx-slit--on,
+.lx-slit--on {
+  opacity: 1;
+}
+
+// The frame is an overlay, not an outline or an inset shadow: the tile's own
+// <figure> covers both of those, while a pseudo-element paints on top. It
+// inherits the 5px radius, and the accent is sampled from the wallpaper — which
+// can come back nearly black — so it is mixed towards the ink first, with the
+// plain value as a fallback.
+.lx-slit--on {
+  z-index: 1;
+}
+
+.lx-slit--on::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--lx-accent);
+  border: 2px solid color-mix(in srgb, var(--lx-accent) 68%, var(--lx-ink));
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.lx-slit--queued::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  block-size: 2px;
+  background: var(--theme-base-color);
+  z-index: 1;
+}
+
+// One bar, three zones: transport on the left, read-only metadata in the
+// middle, utilities on the right. The hairlines are the only thing separating
+// them, so the dock stays quiet next to the plate.
+.lx-dock {
+  position: absolute;
+  left: var(--lx-gap);
+  right: var(--lx-gap);
+  bottom: var(--lx-gap);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  block-size: 48px;
+  padding: 0 12px;
+  overflow: hidden;
+  background: var(--lx-chrome-solid);
+  border: 1px solid var(--lx-hair);
+  border-radius: var(--lx-radius);
+  color: var(--lx-ink);
+  font-size: 12px;
+}
+
+.lx-dock__nav {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.lx-dock__meta {
+  display: flex;
+  align-items: center;
+  // Zero basis: the band only ever takes the space the other two zones leave,
+  // never the width of its own content.
+  flex: 1 1 0;
+  min-inline-size: 0;
+  padding-inline: 12px;
+  border-inline: 1px solid var(--lx-hair-soft);
+}
+
+.lx-dock__tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+
+.lx-dock__sep {
+  flex: 0 0 auto;
+  inline-size: 1px;
+  block-size: 18px;
+  background: var(--lx-hair);
+}
+
+.lx-dock .bk-nav {
+  flex: 0 0 auto;
+}
+
+.lx-dock .bk-nav .bk-pager,
+.lx-dock .bk-nav .bk-pager.active,
+.lx-dock .bk-nav .bk-pager_nav,
+.lx-dock .bk-nav .bk-pager_item,
+.lx-dock .bk-nav .bk-pager_go,
+.lx-dock .bk-nav .bk-pager_go-div,
+.lx-dock .bk-nav .bk-pager_btn,
+.lx-dock .bk-nav .bk-pager_con,
+.lx-dock .bk-nav .bk-pager_box {
+  position: static !important;
+  transform: none !important;
+  animation: none !important;
+  inset: auto !important;
+  inline-size: auto;
+  block-size: auto;
+  margin: 0;
+  background: transparent;
+}
+
+.lx-dock .bk-nav .bk-pager {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lx-dock .bk-nav .bk-pager_holder,
+.lx-dock .bk-nav .bk-pager_go-em {
+  display: none;
+}
+
+.lx-dock .bk-nav .bk-pager_box {
+  display: flex;
+  gap: 2px;
+}
+
+.lx-dock .bk-nav .bk-pager_nav,
+.lx-dock .bk-nav .bk-pager_item,
+.lx-dock .bk-nav .bk-pager_btn {
+  display: grid;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  color: var(--lx-ink-dim);
+  cursor: pointer;
+  transition: color var(--lx-ease), background-color var(--lx-ease);
+}
+
+.lx-dock .bk-nav .bk-pager_nav:hover,
+.lx-dock .bk-nav .bk-pager_item:hover,
+.lx-dock .bk-nav .bk-pager_btn:hover {
+  color: var(--lx-ink);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.lx-dock .bk-nav .bk-pager_nav:focus-visible,
+.lx-dock .bk-nav .bk-pager_item:focus-visible,
+.lx-dock .bk-nav .bk-pager_btn:focus-visible {
+  outline: 1px solid var(--lx-accent);
+  outline-offset: -1px;
+}
+
+// The chevrons are drawn with borders, not typed. The display font has no
+// bracket glyphs, so the old "‹" / "›" content came from a fallback face and
+// the two arrows never matched in weight or size.
+.lx-dock .bk-nav .bk-pager_nav::before,
+.lx-dock .bk-nav .bk-pager_nav::after {
+  content: none !important;
+}
+
+.lx-dock .bk-nav .bk-pager_nav i {
+  display: block;
+  inline-size: 7px;
+  block-size: 7px;
+  border-style: solid;
+  border-color: currentcolor;
+  border-width: 0 1.5px 1.5px 0;
+}
+
+.lx-dock .bk-nav .bk-pager_nav:first-of-type i {
+  transform: rotate(135deg);
+}
+
+.lx-dock .bk-nav .bk-pager_nav:nth-of-type(2) i {
+  transform: rotate(-45deg);
+}
+
+.lx-dock .bk-nav .bk-pager_nav.disabled {
+  opacity: 0.32;
+  pointer-events: none;
+}
+
+// Transport reads left to right: previous, the page shortcuts, next, then the
+// jump field. The old order put both arrows ahead of the numbers.
+.lx-dock .bk-nav .bk-pager_nav:first-of-type {
+  order: 1;
+}
+
+.lx-dock .bk-nav .bk-pager_con {
+  order: 2;
+}
+
+.lx-dock .bk-nav .bk-pager_nav:nth-of-type(2) {
+  order: 3;
+}
+
+// Same treatment as the density segments: the current page is a filled box
+// first, so it stays legible when the sampled accent is dark.
+.lx-dock .bk-nav .bk-pager_item.current {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.lx-dock .bk-nav .bk-pager_item.current .bk-pager_item-text {
+  color: var(--lx-ink);
+  border-bottom: 1px solid var(--lx-accent);
+}
+
+.lx-dock .bk-nav .bk-pager_item-text {
+  inline-size: auto;
+  block-size: auto;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: inherit;
+}
+
+// Jump field, reordered as "[page] / total" so the number has a label.
+.lx-dock .bk-nav .bk-pager_go {
+  order: 4;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-inline-start: 6px;
+  border-inline-start: 1px solid var(--lx-hair-soft);
+}
+
+.lx-dock .bk-nav .bk-pager_go-div:first-of-type {
+  order: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lx-dock .bk-nav .bk-pager_go-div:nth-of-type(2) {
+  order: 1;
+}
+
+.lx-dock .bk-nav .bk-pager_go-div {
+  position: static;
+  inline-size: auto;
+  block-size: auto;
+}
+
+// The display face draws "/" as a near-vertical bar, which reads like a stray
+// glyph next to the total; the system slash is unambiguous. The size is set
+// explicitly because the pager zeroes the font size to close inline gaps.
+.lx-dock .bk-nav .bk-pager_go-div:first-of-type::before {
+  content: "/";
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--lx-ink-mute);
+}
+
+.lx-dock .bk-nav .bk-pager_go-span {
+  inline-size: auto;
+  block-size: auto;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--lx-ink-mute);
+}
+
+.lx-dock .bk-nav .bk-pager_go-input {
+  inline-size: 40px;
+  block-size: 20px;
+  padding: 0 2px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--lx-hair);
+  color: inherit;
+  text-align: center;
+  font: inherit;
+  font-size: 11px;
+  outline: none;
+  transition: border-color var(--lx-ease);
+}
+
+.lx-dock .bk-nav .bk-pager_go-input:focus {
+  border-bottom-color: var(--lx-accent);
+}
+
+.lx-dock .bk-nav .bk-pager_go-input::placeholder {
+  color: var(--lx-ink-mute);
+}
+
+.lx-dock .bk-nav .bk-pager_btn {
+  order: 3;
+  inline-size: 22px;
+  block-size: 22px;
+  position: static;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--lx-ink-dim);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.lx-dock .bk-nav .bk-pager_btn span {
+  display: none;
+}
+
+.lx-dock .bk-nav .bk-pager_btn::after {
+  content: "↵";
+}
+
+.lx-dock .bk-nav .bk-pager_btn:hover {
+  color: var(--lx-ink);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+// Metadata is the quiet zone: it scrolls sideways inside its own band instead
+// of pushing the utilities out of the bar. The fade lives on the scroller, not
+// on the band, so the hairlines framing it stay crisp.
+.lx-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  white-space: nowrap;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 14px), transparent);
+}
+
+.lx-meta::-webkit-scrollbar {
+  display: none;
+}
+
+.lx-id {
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
+.lx-dims {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--lx-ink-dim);
+}
+
+.lx-dims em {
+  font-style: normal;
+  color: var(--lx-ink-mute);
+}
+
+.lx-flag {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--lx-ink-mute);
+}
+
+.lx-tag {
+  flex: 0 0 auto;
+  padding: 2px 4px;
+  font-size: 11px;
+}
+
+.lx-tag:hover {
+  color: var(--lx-ink);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.lx-tag:focus-visible {
+  outline: 1px solid var(--lx-accent);
+  outline-offset: -1px;
+}
+
+.lx-dock .bk-search {
+  inline-size: 140px;
+  flex: 0 0 auto;
+  block-size: 26px;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--lx-hair);
+  background: transparent;
+  color: var(--lx-ink);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  transition: border-color var(--lx-ease);
+}
+
+.lx-dock .bk-search::placeholder {
+  color: var(--lx-ink-mute);
+}
+
+.lx-dock .bk-search:focus {
+  border-bottom-color: var(--lx-accent);
+}
+
+// The queue scrolls inside its own slot so a long batch never clips the tools.
+// An empty queue leaves no slot at all, which keeps the gaps even.
+// Three tiles wide at most. Without the cap the strip's max-content width is
+// every queued tile, which is what used to push the search and settings out of
+// the bar; the overflow now stays inside the strip and scrolls.
+.lx-dock .bk-download-list {
+  block-size: auto;
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  max-inline-size: 232px;
+  margin: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.lx-dock .bk-download-list:has(ul:empty) {
+  display: none;
+}
+
+.lx-dock .bk-download-list::-webkit-scrollbar {
+  display: none;
+}
+
+.lx-dock .bk-download-list .scroll-bar,
+.lx-dock .bk-download-list ul {
+  display: flex;
+  gap: 8px;
+  block-size: auto;
+  overflow: visible;
+}
+
+// Fixed width: without `flex: 0 0 auto` the tiles would shrink to fit the cap
+// instead of scrolling under it.
+.lx-dock .bk-download-item {
+  flex: 0 0 auto;
+  inline-size: 72px;
+  block-size: 36px;
+  margin: 0;
+  aspect-ratio: auto;
+}
+
+.lx-dock .bk-setting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+// The side panel frames these with 4px accent borders; in the dock only the
+// labels carry the meaning, so the frames go away.
+.lx-dock .bk-setting .bk-setting__security {
+  inline-size: auto;
+  block-size: auto;
+  border: 0;
+  background: transparent;
+}
+
+.lx-dock .bk-setting__toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.lx-dock .bk-setting__fake,
+.lx-dock .bk-mode__toggle {
+  display: none;
+}
+
+// The side panel draws the refresh as an accent frame that only shows while
+// loading. In the dock it becomes a small equaliser that is always visible.
+.lx-dock .bk-setting__refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  inline-size: 22px;
+  block-size: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--lx-ink-dim);
+  cursor: pointer;
+  transition: color var(--lx-ease);
+}
+
+.lx-dock .bk-setting__refresh > div {
+  inline-size: 2px;
+  block-size: 11px;
+  background: currentcolor;
+}
+
+.lx-dock .bk-setting__refresh:hover {
+  color: var(--lx-ink);
+}
+
+.lx-dock .bk-setting__refresh:focus-visible {
+  outline: 1px solid var(--lx-accent);
+  outline-offset: 2px;
+}
+
+.lx-word,
+.lx-lang,
+.lx-density button {
+  background: transparent;
+  color: var(--lx-ink-mute);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.lx-word:hover,
+.lx-lang:hover,
+.lx-density button:hover {
+  color: var(--lx-ink);
+}
+
+.lx-lang:focus-visible,
+.lx-word:focus-visible,
+.lx-density button:focus-visible {
+  outline: 1px solid var(--lx-accent);
+  outline-offset: 2px;
+}
+
+// Same segmented frame as the plate cluster, so both rows read as chrome.
+.lx-density {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 2px;
+  border: 1px solid var(--lx-hair-soft);
+  border-radius: var(--lx-radius);
+}
+
+.lx-density button {
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+// The accent is sampled from the wallpaper and can come back dark, so the
+// active segment leans on ink first and only underlines with the accent.
+.lx-density .is-on {
+  color: var(--lx-ink);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 -1px 0 var(--lx-accent);
+}
+
+.lx-lang {
+  color: var(--lx-ink);
+  padding: 2px 0;
+  line-height: 1;
+}
+
+.lx-keys {
+  flex: 0 0 auto;
+  padding-inline-start: 10px;
+  border-inline-start: 1px solid var(--lx-hair-soft);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--lx-ink-mute);
+  white-space: nowrap;
+}
+
+.lx-stage--narrow .lx-dock {
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.lx-stage--narrow .lx-dock__meta {
+  padding-inline: 8px;
+}
+
+.lx-stage--narrow .lx-dock__tools {
+  gap: 8px;
+}
+
+// The bar has no spare width on a phone: the search field is the only thing
+// that can give, so it shrinks before anything gets clipped.
+.lx-stage--narrow .lx-dock__tools {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+}
+
+.lx-stage--narrow .lx-dock .bk-search {
+  flex: 0 1 auto;
+  inline-size: 76px;
+  min-inline-size: 40px;
+}
+
+// A tile here would push the settings and the density switch out of the bar, so
+// the queue stays a desktop surface.
+.lx-stage--narrow .lx-dock .bk-download-list {
+  display: none;
+}
+
+.lx-stage--narrow .lx-dock .bk-setting {
+  gap: 8px;
+}
+
+.lx-stage--narrow .lx-density {
+  gap: 4px;
+  padding: 1px;
+}
+
+.lx-stage--narrow .lx-dock .bk-pager_box,
+.lx-stage--narrow .lx-dock .bk-pager_go {
+  display: none;
+}
+
+.lx-stage--narrow .lx-dims em,
+.lx-stage--narrow .lx-flag,
+.lx-stage--narrow .lx-keys {
+  display: none;
+}
+
+.lx-app .bk-loader {
+  block-size: 2px;
+  background: var(--theme-base-color);
+  z-index: 4;
+}
+
+.lx-app .bk-loader .loader { display: none; }
+
+.lx-app .bk-notify {
+  z-index: 5;
+  top: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lx-scan { animation: none; }
+
+  .lx-btn,
+  .lx-tag,
+  .lx-lang,
+  .lx-word,
+  .lx-density button,
+  .lx-dock .bk-setting__refresh,
+  .lx-dock .bk-nav .bk-pager_nav,
+  .lx-dock .bk-nav .bk-pager_item,
+  .lx-dock .bk-nav .bk-pager_btn {
+    transition: none;
+  }
+}

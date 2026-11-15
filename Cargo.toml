@@ -1,0 +1,112 @@
+[package]
+edition = "2024"
+name = "konachan"
+version = "0.2.0"
+description = "Konachan image board browser built with Leptos and WebAssembly"
+license = "MIT"
+publish = false
+# Keep in sync with `README.md` and the `rust` image used by the Dockerfile.
+rust-version = "1.94"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = 3
+panic = "abort"
+# `strip` stays off: it removes the `target_features` section that
+# `wasm-bindgen` reads. Trunk runs `wasm-opt -Oz` instead (see index.html).
+#
+# `lto = "fat"` plus a single codegen unit is the peak-memory hot spot of the
+# link step. Memory-constrained builders (small CI runners, Docker Desktop)
+# must override it on the command that actually links the crate, i.e.
+# `CARGO_PROFILE_RELEASE_LTO=off trunk build --release`, not on `cargo install`.
+
+# Optimise dependencies even in dev builds: unoptimised wasm is an order of
+# magnitude slower at runtime, which hides real behaviour during development.
+# `[profile.dev]` is intentionally absent: `opt-level = 0` is already the
+# default for the crate itself, so restating it only implied that dev builds are
+# unoptimised as a whole.
+[profile.dev.package."*"]
+opt-level = 3
+
+# Transport selection is `cfg`-based, so the features are *layered* rather than
+# mutually exclusive, and the two call sites rank them differently: `fetch_posts`
+# prefers `web` / `safe` over `tauri`, while `download_image` prefers `tauri`
+# over `web` / `safe` (see `src/api.rs`). Enabling `web` together with `tauri`
+# therefore still compiles, but would fetch over HTTP and download through the
+# Tauri command at the same time - pick exactly one transport per build.
+[features]
+default = []
+fake = []
+# The HTTP transport is shared by the `web` and `safe` builds.
+safe = ["dep:gloo-net"]
+tauri = ["dep:tauri-sys", "dep:futures-util"]
+web = ["dep:gloo-net"]
+
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+complexity = "warn"
+correctness = "deny"
+perf = "warn"
+style = "warn"
+suspicious = "warn"
+
+[dependencies]
+color-thief = "0.2.2"
+# Only used by the event stream of the desktop build.
+futures-util = { version = "0.3.34", optional = true }
+# Never referenced from the sources: it is required so that `rand` gets the
+# `wasm_js` backend on wasm targets. Removing it makes `rand` panic at runtime
+# ("the `wasm_js` feature is not enabled"), so dependency-cleanup tooling must
+# leave it alone.
+getrandom = { version = "0.4.3", features = ["wasm_js"] }
+# Only used by the HTTP transport (`web` / `safe`).
+gloo-net = { version = "0.7.0", optional = true }
+js-sys = "0.3.107"
+leptos = { version = "0.8.23", features = ["csr"] }
+rand = "0.10.3"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+# Pinned to a revision: the repository publishes no tags, and `Cargo.lock` is
+# the only other thing holding this dependency still, so running without
+# `--locked` (or regenerating the lock file) would otherwise silently move the
+# desktop build to a newer commit.
+tauri-sys = { git = "https://github.com/JonasKruckenberg/tauri-sys", features = ["all"], rev = "b2fd7a1f65d1bc84ab039af8f3219bbacb799e97", optional = true }
+thiserror = "2.0"
+wasm-bindgen = "0.2.130"
+wasm-bindgen-futures = "0.4.80"
+web-sys = { version = "0.3.107", features = [
+  "AnimationEvent",
+  "Blob",
+  "BlobPropertyBag",
+  "CanvasRenderingContext2d",
+  "CssStyleDeclaration",
+  "Document",
+  "DomRectReadOnly",
+  "Element",
+  "Event",
+  "EventTarget",
+  "HtmlAnchorElement",
+  "HtmlCanvasElement",
+  "HtmlElement",
+  "HtmlImageElement",
+  "HtmlInputElement",
+  "ImageData",
+  "InputEvent",
+  "KeyboardEvent",
+  "MouseEvent",
+  "PointerEvent",
+  "WheelEvent",
+  "Navigator",
+  "RegistrationOptions",
+  "ResizeObserver",
+  "ResizeObserverEntry",
+  "ScrollBehavior",
+  "ScrollIntoViewOptions",
+  "ScrollLogicalPosition",
+  "ServiceWorkerContainer",
+  "Url",
+  "Window",
+] }

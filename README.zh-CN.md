@@ -1,0 +1,317 @@
+# konachan-leptos
+
+<p align="center">
+  <img src="./screenshot.png" alt="Konachan 截图" width="800" />
+</p>
+
+<p align="center">
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.94+-dea584?style=flat&logo=rust" alt="Rust" /></a>
+  <a href="https://leptos.dev/"><img src="https://img.shields.io/badge/Leptos-0.8-ef3939?style=flat" alt="Leptos" /></a>
+  <a href="https://github.com/lf-wxp/konachan-leptos"><img src="https://img.shields.io/github/license/lf-wxp/konachan-leptos" alt="许可证" /></a>
+  <a href="https://github.com/lf-wxp/konachan-leptos/releases"><img src="https://img.shields.io/github/v/release/lf-wxp/konachan-leptos?include_prereleases" alt="发布版本" /></a>
+</p>
+
+<p align="center">
+  一个现代、快速、美观的 <a href="https://konachan.com/">Konachan</a> 网页前端，使用 Rust 和 WebAssembly 基于 <a href="https://leptos.dev/">Leptos</a> 框架构建。
+</p>
+
+<p align="center">
+  <a href="./README.md">English Documentation</a>
+</p>
+
+---
+
+## 📖 项目概述
+
+**konachan-leptos** 是一个高性能的单页应用（SPA），为 Konachan 图片板提供增强的浏览体验。借助 Rust 和 WebAssembly 的强大性能，带来闪电般的运行速度和现代化的用户界面。
+
+本仓库仅包含**网页前端**。提供图片数据的后端 API 服务器请访问 [konachan-api](https://github.com/lf-wxp/konachan-api)。
+
+---
+
+## ✨ 功能特性
+
+| 功能 | 描述 |
+|-------|------|
+| 🖼️ **灯箱舞台** | 全幅画面 + 胶片条导轨，三档密度，支持滚轮 / 方向键 / 滑动切换 |
+| 📥 **下载管理** | 内置下载队列，支持进度跟踪 |
+| 🎨 **动态壁纸** | 设置图片为动态壁纸 |
+| 🌍 **多语言支持** | 支持多种语言（英文和中文） |
+| 🎭 **安全模式** | 可配置的内容过滤，安全浏览 |
+| 🌓 **主题支持** | 可自定义 UI 主题颜色 |
+| 🔍 **高级搜索** | 强大的基于标签的搜索和过滤功能 |
+| ⚡ **极速性能** | 基于 Rust/WASM，提供接近原生的性能 |
+| 📱 **响应式设计** | 在桌面和移动设备上无缝运行 |
+| 🐳 **Docker 支持** | 一行命令即可使用 Docker 部署 |
+
+---
+
+## 🛠️ 技术栈
+
+- **框架**: [Leptos 0.8](https://leptos.dev/) - 细粒度响应式的 Rust WebAssembly 框架（CSR 构建）
+- **语言**: Rust (Edition 2024)
+- **样式**: 由 Trunk 编译的静态 SCSS（不再运行时注入 `<style>`）
+- **状态管理**: 基于 Leptos 信号（`RwSignal` / `Memo`）的单一 `AppState` 上下文，分页 / 下载 / 通知各自配有纯 reducer
+- **WASM 绑定**: 
+  - [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) - WASM 和 JavaScript 之间的高级交互
+  - [gloo-net](https://github.com/rustwasm/gloo/tree/master/crates/net) - 传输层使用的 HTTP 客户端
+- **构建工具**: [Trunk](https://trunkrs.dev/) - WASM Web 应用打包器（内置 Dart Sass）
+- **桌面端（可选）**: [Tauri](https://tauri.app/) - 构建更小、更快、更安全的桌面应用程序
+
+---
+
+## 🚀 快速开始
+
+### 前置要求
+
+- [Rust](https://www.rust-lang.org/) 工具链（1.94+）
+- `wasm32-unknown-unknown` 编译目标: 
+  ```bash
+  rustup target add wasm32-unknown-unknown
+  ```
+- [Trunk](https://trunkrs.dev/): 
+  ```bash
+  cargo install trunk@0.21.14
+  ```
+- （可选）[cargo-make](https://github.com/sagiegurari/cargo-make): 
+  ```bash
+  cargo install cargo-make
+  ```
+
+### 功能标志
+
+| 标志 | 描述 |
+|------|------|
+| `fake` | 使用模拟数据开发，无需后端 |
+| `safe` | 安全模式的编译期默认值（可在运行时覆盖，见下文） |
+| `web` | 生产环境网页构建（调用同源 `/api/`） |
+| `tauri` | 启用 Tauri 集成以构建桌面应用 |
+
+### 开发
+
+#### 直接使用 Trunk
+
+```bash
+# 使用模拟数据的开发服务器（无需后端），端口 8888
+trunk serve --features fake
+
+# 使用 web 功能的开发服务器（需要后端运行在 localhost:8000）
+trunk serve --features web
+
+# 使用安全模式配置的开发服务器
+trunk serve --features safe
+```
+
+#### 使用 cargo-make（推荐）
+
+```bash
+# 使用模拟数据开发
+cargo make dev-fake
+
+# 使用 web 功能开发（需要后端）
+cargo make dev-web
+
+# 使用安全模式开发
+cargo make dev-safe
+```
+
+开发服务器默认运行在**端口 8888**。对 `/api/` 的 API 请求将被代理到 `http://localhost:8000`。
+
+### 可用任务
+
+```bash
+# 格式化代码
+cargo make format
+
+# 运行 clippy 代码检查
+cargo make clippy
+
+# 格式化 + clippy 检查
+cargo make check
+
+# 运行测试
+cargo make test
+
+# 清理构建产物
+cargo make clean
+```
+
+---
+
+## 📦 生产构建
+
+### 网页构建
+
+```bash
+trunk build --release --features web
+```
+
+输出的静态文件将在 `dist/` 目录中。
+
+### Docker 部署
+
+#### 构建 Docker 镜像
+
+```bash
+# 使用 cargo-make
+cargo make docker-build
+
+# 或直接运行
+docker build -t konachan-leptos:latest .
+```
+
+#### 运行容器
+
+```bash
+# 使用 cargo-make（映射到端口 8080）
+cargo make docker-run
+
+# 或直接运行
+docker run --rm -p 8080:80 --name konachan-leptos konachan-leptos:latest
+```
+
+#### 运行时配置（一个镜像，两种模式）
+
+镜像只需用 `web` 特性构建一次。安全模式（始终过滤敏感内容并隐藏切换开关）
+通过 **容器启动时** 的 `KONACHAN_SAFE` 环境变量选择，因此无需为每种模式分别构建
+镜像：
+
+```bash
+# 普通模式（默认）
+docker run --rm -p 8080:80 -e KONACHAN_SAFE=false konachan-leptos:latest
+
+# 安全模式
+docker run --rm -p 8080:80 -e KONACHAN_SAFE=true konachan-leptos:latest
+```
+
+容器启动时，nginx 入口脚本会重新生成 `/config.js`，WASM 包在渲染前通过
+`window.__KONACHAN_CONFIG__` 读取它。可识别的真值为 `true`、`1`、`yes` 和
+`on`；其他值（或未设置）表示普通模式。该机制同样适用于任意静态托管，只需修改
+`dist/config.js` 即可。
+
+本地开发时 `/config.js` 为空对象，因此仍由编译期的 `safe` 特性
+（`cargo make dev-safe`）决定模式。
+
+#### Docker 架构
+
+Dockerfile 使用**多阶段构建**：
+
+1. **构建阶段** (`rust:1.94-trixie`): 使用 Trunk 编译 Rust/WASM
+2. **运行阶段** (`nginx:1.27-bookworm`): 使用 nginx 提供静态文件服务
+
+nginx 配置包括：
+- 对 WASM、JS、CSS 和 SVG 启用 Gzip 压缩
+- 静态资源激进缓存（1 年，不可变）
+- SPA 回退（所有路由都返回 `index.html`）
+- 永不缓存的 `/config.js`，用于运行时配置
+
+#### API 路由
+
+镜像只提供静态文件，**不会**代理 `/api/` 请求。前端访问的是自身源下的
+`/api/*`，因此需要由部署环境负责把这些请求路由到后端——可以使用上游反向代理、
+Ingress 规则或网关：
+
+```nginx
+location /api/ {
+    proxy_pass http://backend:8000/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+#### 停止容器
+
+```bash
+# 使用 cargo-make
+cargo make docker-stop
+
+# 或直接运行
+docker stop konachan-leptos
+```
+
+---
+
+## 📁 项目结构
+
+```
+konachan-leptos/
+├── src/
+│   ├── components/     # Leptos 组件（导航、列表、搜索、通知等）
+│   ├── state/          # 响应式 store（AppState）+ 纯 reducer（分页/下载/通知）
+│   ├── utils/          # 浏览器工具、瀑布流布局、canvas 动画
+│   ├── api.rs          # 传输层（HTTP 或 Tauri）
+│   ├── model.rs        # 数据模型和结构体
+│   ├── app.rs          # 根组件（provider + 布局）
+│   └── main.rs         # 应用程序入口点
+├── static/             # 静态资源
+│   ├── css/            # 样式表（style.scss + _components.scss）
+│   ├── font/           # 字体文件
+│   ├── image/          # 图片资源
+│   ├── mock/           # 开发用的模拟数据
+│   └── script/         # JavaScript 工具（含运行时 config.js）
+├── docker/             # 容器入口脚本
+├── dist/               # 构建输出（生产环境）
+├── Cargo.toml          # Rust 依赖
+├── Trunk.toml          # Trunk 配置
+├── Dockerfile          # Docker 多阶段构建
+└── Makefile.toml       # cargo-make 任务
+```
+
+---
+
+## 🤝 贡献指南
+
+欢迎贡献！请随时提交 Pull Request。对于重大更改，请先打开 Issue 讨论您想要更改的内容。
+
+### 贡献步骤
+
+1. Fork 本仓库
+2. 创建您的功能分支（`git checkout -b feature/AmazingFeature`）
+3. 提交您的更改（`git commit -m 'Add some AmazingFeature'`）
+4. 推送到分支（`git push origin feature/AmazingFeature`）
+5. 打开 Pull Request
+
+### 代码风格
+
+本项目遵循：
+- [Rust Style Guide](https://doc.rust-lang.org/1.0.0/style/README.html)
+- [Airbnb CSS Style Guide](https://github.com/airbnb/css)
+- 所有代码使用 `rustfmt` 格式化，并使用 `clippy` 进行代码检查
+
+---
+
+## 📝 许可证
+
+本项目采用 MIT 许可证 - 详情请参阅 [LICENSE](LICENSE) 文件。
+
+---
+
+## 🔗 相关项目
+
+| 项目 | 描述 |
+|-------|------|
+| [konachan-api](https://github.com/lf-wxp/konachan-api) | Konachan 图片数据的后端 API 服务器 |
+| [konachan-tauri](https://github.com/lf-wxp/konachan-tauri) | 使用 Tauri 框架的桌面应用版本 |
+
+---
+
+## 🙏 致谢
+
+- [Konachan](https://konachan.com/) 提供图片板 API
+- [Leptos](https://leptos.dev/) 团队提供出色的 Rust/WASM 框架
+- 所有为这个项目提供帮助的贡献者
+
+---
+
+## 📧 联系方式
+
+- GitHub Issues: [报告错误或请求功能](https://github.com/lf-wxp/konachan-leptos/issues)
+- 项目链接: [https://github.com/lf-wxp/konachan-leptos](https://github.com/lf-wxp/konachan-leptos)
+
+---
+
+<p align="center">
+  使用 Rust + WebAssembly ❤️ 制作
+</p>

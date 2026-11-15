@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Same minor version as `rust-toolchain.toml`, `rust-version` in
+      # `Cargo.toml` and the `rust` image used by the Dockerfile: the checks
+      # below therefore also act as the MSRV check, and a compiler upgrade is a
+      # single deliberate edit in four places instead of an accidental one.
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.94
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@v2
+
+      # `rustfmt.toml` must stay on stable-only options, otherwise this check
+      # reports a diff that the author's nightly rustfmt never produces.
+      - name: Formatting
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: >-
+          cargo clippy --locked --target wasm32-unknown-unknown
+          --features web --all-targets -- -D warnings
+
+      - name: Unit tests
+        run: cargo test --locked
+
+      # Every feature combination must compile: the transport layer and the
+      # download path are `cfg`-gated, so a broken combination only shows up
+      # when the corresponding feature is enabled.
+      - name: Feature matrix
+        run: |
+          for features in "" web fake safe web,safe tauri fake,tauri; do
+            echo "::group::features=${features:-none}"
+            cargo check --locked --target wasm32-unknown-unknown ${features:+--features "$features"}
+            echo "::endgroup::"
+          done
+
+      - name: Install Trunk
+        uses: taiki-e/install-action@v2
+        with:
+          tool: trunk
+
+      - name: Release build
+        run: trunk build --release --features web
+
+      - name: Release build (safe mode)
+        run: trunk build --release --features safe --config Trunk.safe.toml

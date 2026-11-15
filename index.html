@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="theme-color" content="#000000" />
+		<meta name="description" content="Konachan image board browser" />
+		<link
+			rel="icon"
+			data-trunk
+			type="image/x-icon"
+			href="static/image/logo.svg"
+			data-target-path="./"
+		/>
+		<link rel="scss" data-trunk href="static/css/style.scss" />
+		<!-- `wasm-opt -Oz` shrinking is explicit: it strips the names/debug
+		     sections that `Cargo.toml`'s `strip` cannot remove without breaking
+		     `wasm-bindgen`'s target-feature detection. -->
+		<link rel="rust" data-trunk data-wasm-opt="z" />
+		<link
+			rel="copy-dir"
+			data-trunk
+			href="static/font"
+			data-target-path="./font"
+		/>
+		<link
+			rel="copy-dir"
+			data-trunk
+			href="static/image"
+			data-target-path="./image"
+		/>
+		<link
+			rel="copy-dir"
+			data-trunk
+			href="static/splash"
+			data-target-path="./splash"
+		/>
+		<link
+			rel="copy-file"
+			data-trunk
+			href="static/html/splashscreen.html"
+			data-target-path="./"
+		/>
+		<link
+			rel="copy-file"
+			data-trunk
+			href="static/script/sw.js"
+			data-target-path="./"
+		/>
+		<link
+			rel="copy-file"
+			data-trunk
+			href="static/script/config.js"
+			data-target-path="./"
+		/>
+		<!-- Trunk has no `manifest` asset type: the file is copied verbatim and
+		     referenced from a plain `<link>` below. Icons stay under `/image/`
+		     because that directory is already copied with stable names. -->
+		<link
+			rel="copy-file"
+			data-trunk
+			href="static/manifest.webmanifest"
+			data-target-path="./"
+		/>
+		<link rel="manifest" href="/manifest.webmanifest" />
+		<link rel="apple-touch-icon" href="/image/icon-192.png" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-title" content="Konachan" />
+		<!-- Loaded before the WASM bundle so runtime flags are available at boot. -->
+		<script src="/config.js"></script>
+	</head>
+	<body dir="ltr"></body>
+</html>

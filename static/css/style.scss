@@ -1,0 +1,67 @@
+// Component styles, compiled into this stylesheet. `@use` must be the first
+// rule of the file.
+@use 'components';
+@use 'lightbox';
+
+:root {
+	--theme-base-color: rgba(57, 204, 204);
+	--theme-base-color-rgb: 57, 204, 204;
+	--theme-muted-color: #39cccc;
+
+	--theme-page-nav-bg-color: rgba(0, 0, 0, 0.3);
+	--theme-page-item-size: 36px;
+	// `color(var() alpha()/shade())` is CSS Color 3 draft syntax no browser ever
+	// shipped, so these used to compute to an invalid value and leave the page
+	// placeholder blocks without a background. `color-mix()` is the modern
+	// equivalent (shade == mixing towards black).
+	--theme-page-item-breath-color1: color-mix(in srgb, var(--theme-base-color) 95%, black);
+	--theme-page-item-breath-color2: color-mix(in srgb, var(--theme-base-color) 90%, black);
+
+	--theme-list-tool-height: 25px;
+	--theme-list-gap: 10px;
+
+  --warning-color: #e47319;
+  --danger-color: #d54941;
+  --success-color: #2ca471;
+  --info-color: #0052d9;
+}
+
+body {
+	block-size: 100vh;
+	inline-size: 100vw;
+	margin-block: 0;
+	margin-inline: 0;
+	overflow: hidden;
+}
+ul {
+	margin: 0;
+	padding: 0;
+}
+li {
+	list-style: none;
+}
+.scroll-bar {
+	&::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+	&::-webkit-scrollbar-thumb {
+		border: 2px solid transparent;
+		background-clip: content-box;
+		background-color: rgba(var(--theme-base-color-rgb), 0.4);
+		border-radius: 15px;
+	}
+}
+* {
+	box-sizing: border-box;
+}
+@font-face {
+	font-family: 'ZagRegular';
+	src: url('./font/ZagRegular.eot?#iefix') format('embedded-opentype'),
+		url('./font/ZagRegular.otf') format('opentype'),
+		url('./font/ZagRegular.woff') format('woff'),
+		url('./font/ZagRegular.ttf') format('truetype'),
+		url('./font/ZagRegular.svg#ZagRegular') format('svg');
+	font-weight: normal;
+	font-style: normal;
+}
