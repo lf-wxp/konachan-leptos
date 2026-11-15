@@ -147,6 +147,21 @@
   animation: none;
 }
 
+// The spinner blades are the only "loading" affordance left in the lightbox,
+// and they are painted with the palette sampled from the wallpaper - which can
+// come back nearly black and vanish on the translucent plate. Mixing towards
+// the ink first keeps them readable on every wallpaper, the same way
+// `.lx-slit--on::after` handles the accent.
+.lx-plate .bk-pending .loader::before,
+.lx-rail .bk-pending .loader::before {
+  background: color-mix(in srgb, var(--theme-base-color) 45%, var(--lx-ink));
+}
+
+.lx-plate .bk-pending .loader::after,
+.lx-rail .bk-pending .loader::after {
+  background: color-mix(in srgb, var(--theme-primary-color) 45%, var(--lx-ink));
+}
+
 // The plate cross-fades instead. The frame being replaced is kept on the
 // `--under` layer, and the incoming one is keyed so the browser rebuilds the
 // node; that is what makes the entry animation run on every swap rather than
@@ -895,6 +910,27 @@
   display: none;
 }
 
+// Same deal for the mode switch: the 32px square exists to anchor the accent
+// bar of the side panel. In the dock the bar is gone and the label is the whole
+// control, so the box shrinks to it and centres the text like its neighbours
+// instead of pinning it to the corner of an oversized hit area.
+.lx-dock .bk-setting .bk-mode {
+  inline-size: auto;
+  block-size: auto;
+  display: flex;
+  align-items: center;
+  padding: 2px 0;
+  line-height: 1;
+  // `json`/`xml` stay lowercase in the payload and in the DOM; the short
+  // uppercase caps here only match the `EN` and `密`/`扫`/`阔` caps beside them.
+  text-transform: uppercase;
+}
+
+.lx-dock .bk-setting .bk-mode:focus-visible {
+  outline: 1px solid var(--lx-accent);
+  outline-offset: 2px;
+}
+
 // The side panel draws the refresh as an accent frame that only shows while
 // loading. In the dock it becomes a small equaliser that is always visible.
 .lx-dock .bk-setting__refresh {
@@ -1040,9 +1076,12 @@
   display: none;
 }
 
+// The full-size spinner becomes a hairline. It keeps the same ink mix as the
+// tile spinners: the sampled wallpaper colour can be nearly black, which left
+// the bar invisible against the dark shell.
 .lx-app .bk-loader {
   block-size: 2px;
-  background: var(--theme-base-color);
+  background: color-mix(in srgb, var(--theme-base-color) 45%, var(--lx-ink));
   z-index: 4;
 }
 

@@ -512,6 +512,14 @@ pub fn Stage() -> impl IntoView {
               }
             }
           />
+          // The first request has no plate image yet, so no tile spinner exists
+          // to show for it: the plate would stay blank on the wallpaper until
+          // the posts arrive.
+          <Show when=move || shown.get().is_none() && state.loading.get()>
+            <section class="bk-pending">
+              <div class="loader"></div>
+            </section>
+          </Show>
         </div>
         <div class="lx-scan" aria-hidden="true"></div>
         <span class="lx-tick lx-tick--tl" aria-hidden="true"></span>

@@ -277,14 +277,21 @@ impl ParticleProgress {
     }
   }
 
-  /// Restarts the animation from zero.
+  /// Clears the canvas and starts the frame loop, keeping the current
+  /// percentage.
+  ///
+  /// The completion ratio is owned by the download queue, not by the
+  /// animation, so it is deliberately *not* reset here. A tile whose preview
+  /// finishes loading after the transfer already reported 100% (an image that
+  /// is on disk already, or a very fast download) would otherwise be wiped
+  /// back to zero with no further progress event to fix it, and a finished
+  /// download would sit in the strip as an empty, never-completing tile.
   pub fn start(&mut self) {
     if let (Some(canvas), Some(ctx)) = (&self.canvas, &self.ctx) {
       ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
     }
     self.revealed.set(0.0);
     self.timer.start();
-    self.set_percent(0.0);
   }
 
   /// Stops the animation, e.g. after a failed download.
