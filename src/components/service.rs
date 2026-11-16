@@ -8,7 +8,7 @@ use web_sys::HtmlElement;
 
 use crate::api::fetch_posts;
 use crate::model::FetchParams;
-use crate::state::{Msg, NoticeTag, PageAction, use_app_state};
+use crate::state::{NoticeTag, PageAction, use_app_state};
 use crate::utils::query_selector;
 
 /// Sequence number of the latest post request.
@@ -27,6 +27,9 @@ const REQUEST_TIMEOUT: u64 = 30;
 /// Success codes the backend is known to report in `ImageRes::code`.
 const SUCCESS_CODES: [i32; 2] = [0, 200];
 
+/// Error toast shown when a post-list request fails or times out.
+const GET_LIST_ERROR: &str = "Get image list error, try again!";
+
 /// Applies the theme to the `<html>` element and keeps the post list in sync
 /// with the current query.
 #[component]
@@ -42,15 +45,6 @@ pub fn Service() -> impl IntoView {
       for (name, value) in declarations {
         let _ = style.set_property(name, &value);
       }
-    }
-  });
-
-  // Detected language -> `<html lang>`, so assistive tech announces the page
-  // in the language actually used by the notifications.
-  Effect::new(move |_| {
-    let tag = state.i18n.get().tag();
-    if let Some(root) = query_selector::<HtmlElement>("html") {
-      let _ = root.set_attribute("lang", tag);
     }
   });
 
@@ -73,7 +67,7 @@ pub fn Service() -> impl IntoView {
           leptos::logging::error!("[Service] request {seq} timed out");
           state.loading.set(false);
           state.notify(
-            state.i18n.get().t(Msg::GetListError),
+            GET_LIST_ERROR,
             NoticeTag::Danger,
             Some(3),
           );
@@ -100,7 +94,7 @@ pub fn Service() -> impl IntoView {
               response.msg.as_deref().unwrap_or("no message")
             );
             state.notify(
-              state.i18n.get().t(Msg::GetListError),
+              GET_LIST_ERROR,
               NoticeTag::Danger,
               Some(3),
             );
@@ -112,7 +106,7 @@ pub fn Service() -> impl IntoView {
         Err(error) => {
           leptos::logging::error!("[Service] could not load posts: {error}");
           state.notify(
-            state.i18n.get().t(Msg::GetListError),
+            GET_LIST_ERROR,
             NoticeTag::Danger,
             Some(3),
           );

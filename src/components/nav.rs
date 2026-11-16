@@ -4,7 +4,7 @@ use leptos::prelude::*;
 use web_sys::KeyboardEvent;
 
 use crate::components::class_list;
-use crate::state::{Msg, PageAction, use_app_state};
+use crate::state::{PageAction, use_app_state};
 
 /// Number of page shortcuts shown around the current page.
 const WINDOW_SIZE: u32 = 4;
@@ -91,7 +91,7 @@ pub fn Nav() -> impl IntoView {
           class=prev_class
           role="button"
           tabindex="0"
-          aria-label=move || state.i18n.get().t(Msg::PreviousPage)
+          aria-label="Previous page"
           on:click=move |_| state.dispatch_page(PageAction::Prev)
           on:keydown=move |event: KeyboardEvent| {
             if is_activate_key(&event) {
@@ -106,7 +106,7 @@ pub fn Nav() -> impl IntoView {
           class=next_class
           role="button"
           tabindex="0"
-          aria-label=move || state.i18n.get().t(Msg::NextPage)
+          aria-label="Next page"
           on:click=move |_| state.dispatch_page(PageAction::Next)
           on:keydown=move |event: KeyboardEvent| {
             if is_activate_key(&event) {
@@ -139,7 +139,7 @@ pub fn Nav() -> impl IntoView {
                     data-id=page.to_string()
                     role="button"
                     tabindex="0"
-                    aria-label=format!("{} {page}", state.i18n.get().t(Msg::Page))
+                    aria-label=format!("Page {page}")
                     on:click=move |_| state.dispatch_page(PageAction::Invoke(page as usize))
                     on:keydown=move |event: KeyboardEvent| {
                       if is_activate_key(&event) {

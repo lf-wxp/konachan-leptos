@@ -3,8 +3,6 @@
 use leptos::prelude::*;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
 use web_sys::{HtmlInputElement, KeyboardEvent, PointerEvent, WheelEvent};
 
 #[cfg(not(all(feature = "fake", not(feature = "tauri"))))]
@@ -15,9 +13,9 @@ use crate::components::{
 #[cfg(not(all(feature = "fake", not(feature = "tauri"))))]
 use crate::model::DownloadProgress;
 use crate::model::{Image, ImageState};
-use crate::state::{DownloadAction, Language, PageAction, use_app_state};
 #[cfg(not(all(feature = "fake", not(feature = "tauri"))))]
-use crate::state::{Msg, NoticeTag};
+use crate::state::NoticeTag;
+use crate::state::{DownloadAction, PageAction, use_app_state};
 use crate::utils::{WidthObserver, target_as};
 
 /// Gap between the stage edge and the blocks, and between any two blocks.
@@ -34,15 +32,6 @@ const DOCK_TOP: f64 = GAP + DOCK_BAR;
 /// Bottom edge shared by the plate and the rail.
 const CONTENT_BOTTOM: f64 = DOCK_TOP + GAP;
 
-/// Which end of the next page to open after a page turn.
-#[derive(Clone, Copy)]
-enum Edge {
-  /// First visible post.
-  First,
-  /// Last visible post.
-  Last,
-}
-
 /// How much of the page is kept beside the plate.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Density {
@@ -52,10 +41,6 @@ enum Density {
   Gallery,
   /// A hairline, widened on hover.
   Cinema,
-}
-
-fn is_zh(language: Language) -> bool {
-  language == Language::Zh
 }
 
 fn picture_url(image: &Image) -> String {
@@ -83,6 +68,10 @@ fn enqueue(state: crate::state::AppState, image: Arc<Image>) {
   start_download(state, &image);
 }
 
+/// Error toast shown when a download fails.
+#[cfg(not(all(feature = "fake", not(feature = "tauri"))))]
+const DOWNLOAD_ERROR: &str = "Download failed, try again!";
+
 /// Hands the image to the transport and settles its queue entry afterwards.
 ///
 /// The desktop build reports progress through backend events and never
@@ -100,11 +89,7 @@ fn start_download(state: crate::state::AppState, image: &Image) {
         percent: 0.0,
         status: ImageState::Error,
       }));
-      state.notify(
-        state.i18n.get().t(Msg::DownloadError),
-        NoticeTag::Danger,
-        Some(3),
-      );
+      state.notify(DOWNLOAD_ERROR, NoticeTag::Danger, Some(3));
     } else {
       #[cfg(not(feature = "tauri"))]
       state.dispatch_download(DownloadAction::Remove(url));
@@ -179,39 +164,13 @@ fn toggle_tag(state: crate::state::AppState, tag: String, exclude: bool) {
   state.set_query(parts.join(" "));
 }
 
-/// How long a pending page-turn hint stays armed, in seconds.
-const PENDING_TIMEOUT: u64 = 5;
-
-/// Distinguishes consecutive arming calls so a stale timeout cannot clear a
-/// newer hint (two page turns within [`PENDING_TIMEOUT`]).
-static PENDING_GEN: AtomicU64 = AtomicU64::new(0);
-
-/// Arms the "which end of the new page to open" hint.
-///
-/// The hint is consumed by the effect that runs when the image list changes.
-/// A page turn whose request fails never changes it, so without the timeout
-/// the stale hint would fire on the next unrelated update and jump the plate.
-fn arm_pending(pending: RwSignal<Option<Edge>>, edge: Edge) {
-  pending.set(Some(edge));
-  // Own this arming with a fresh generation; the timeout clears the hint only
-  // when no later turn superseded it within the window.
-  let ticket = PENDING_GEN.fetch_add(1, Ordering::Relaxed) + 1;
-  set_timeout(
-    move || {
-      if PENDING_GEN.load(Ordering::Relaxed) == ticket {
-        pending.set(None);
-      }
-    },
-    Duration::from_secs(PENDING_TIMEOUT),
-  );
-}
-
+/// Moves the plate one post up (`dir < 0`) or down (`dir > 0`) within the
+/// current page. The ends of the page are hard stops: turning the page is the
+/// job of the arrow keys that map to the pager.
 fn step_plate(
-  state: crate::state::AppState,
   visible: Memo<Vec<Arc<Image>>>,
   locked: RwSignal<Option<u32>>,
   scrub: RwSignal<Option<u32>>,
-  pending: RwSignal<Option<Edge>>,
   dir: i32,
 ) {
   let items = visible.get_untracked();
@@ -224,23 +183,12 @@ fn step_plate(
     .position(|image| Some(image.id) == current)
     .unwrap_or(0);
   if dir < 0 && index == 0 {
-    if state.page_current.get_untracked() > 1 {
-      arm_pending(pending, Edge::Last);
-      scrub.set(None);
-      state.dispatch_page(PageAction::Prev);
-    }
     return;
   }
   let next = if dir > 0 { index + 1 } else { index - 1 };
   if let Some(image) = items.get(next) {
     locked.set(Some(image.id));
     scrub.set(None);
-    return;
-  }
-  if dir > 0 && state.page_current.get_untracked() < state.page_total.get_untracked() {
-    arm_pending(pending, Edge::First);
-    scrub.set(None);
-    state.dispatch_page(PageAction::Next);
   }
 }
 
@@ -257,7 +205,6 @@ pub fn Stage() -> impl IntoView {
   let rail_hot = RwSignal::new(false);
   let locked = RwSignal::new(None::<u32>);
   let scrub = RwSignal::new(None::<u32>);
-  let pending = RwSignal::new(None::<Edge>);
   let wheel_at = RwSignal::new(0.0);
   let swipe = Rc::new(std::cell::Cell::new(None::<(i32, i32)>));
 
@@ -277,23 +224,16 @@ pub fn Stage() -> impl IntoView {
     }
   });
 
+  // The plate follows the list. A post that survives the update (a resize, a
+  // filtered relayout) stays on the plate; when it is gone - a page turn, a new
+  // query - the new list opens on its first post.
   Effect::new(move |_| {
     let items = visible.get();
-    if let Some(edge) = pending.get_untracked() {
-      pending.set(None);
-      let image = match edge {
-        Edge::First => items.first(),
-        Edge::Last => items.last(),
-      };
-      locked.set(image.map(|image| image.id));
-      return;
-    }
     let current = locked.get_untracked();
     if current.is_some_and(|id| items.iter().any(|image| image.id == id)) {
       return;
     }
-    let index = items.len().saturating_sub(1).min(10);
-    locked.set(items.get(index).map(|image| image.id));
+    locked.set(items.first().map(|image| image.id));
   });
 
   let shown = Memo::new(move |_| {
@@ -360,8 +300,10 @@ pub fn Stage() -> impl IntoView {
         return;
       }
       match event.key().as_str() {
-        "ArrowRight" => step_plate(state, visible, locked, scrub, pending, 1),
-        "ArrowLeft" => step_plate(state, visible, locked, scrub, pending, -1),
+        "ArrowRight" => state.dispatch_page(PageAction::Next),
+        "ArrowLeft" => state.dispatch_page(PageAction::Prev),
+        "ArrowUp" => step_plate(visible, locked, scrub, -1),
+        "ArrowDown" => step_plate(visible, locked, scrub, 1),
         "d" | "D" => {
           if let Some(image) = shown.get_untracked() {
             enqueue(state, image);
@@ -448,18 +390,16 @@ pub fn Stage() -> impl IntoView {
       <div class="lx-top">
         <div class="lx-mark">
           <strong>"KONA"</strong>
-          <span>{move || if is_zh(state.i18n.get().language()) { "灯箱" } else { "LIGHTBOX" }}</span>
+          <span>"LIGHTBOX"</span>
         </div>
-        <div class="lx-sample" title=move || if is_zh(state.i18n.get().language()) { "从宽银幕取样的基色、主色、辅色" } else { "Base, primary, and ancillary sampled from the reel" }>
+        <div class="lx-sample" title="Base, primary, and ancillary sampled from the reel">
           <i class="lx-swatch lx-swatch--base"></i>
           <i class="lx-swatch lx-swatch--primary"></i>
           <i class="lx-swatch lx-swatch--ancillary"></i>
           <em>
             {move || match state.wallpaper.get() {
               Some((id, _)) => format!("#{id}"),
-              None => {
-                if is_zh(state.i18n.get().language()) { "壁纸".to_string() } else { "REEL".to_string() }
-              }
+              None => "REEL".to_string(),
             }}
           </em>
         </div>
@@ -476,7 +416,7 @@ pub fn Stage() -> impl IntoView {
           wheel_at.set(now);
           event.prevent_default();
           let dir = if event.delta_y() > 0.0 { 1 } else { -1 };
-          step_plate(state, visible, locked, scrub, pending, dir);
+          step_plate(visible, locked, scrub, dir);
         }
         on:pointerdown=move |event: PointerEvent| {
           swipe_down.set(Some((event.client_x(), event.client_y())));
@@ -491,7 +431,7 @@ pub fn Stage() -> impl IntoView {
           if dx.abs() < 48 || dx.abs() < dy.abs() {
             return;
           }
-          step_plate(state, visible, locked, scrub, pending, if dx < 0 { 1 } else { -1 });
+          step_plate(visible, locked, scrub, if dx < 0 { 1 } else { -1 });
         }
       >
         <div class="lx-hero">
@@ -528,22 +468,9 @@ pub fn Stage() -> impl IntoView {
         <span class="lx-tick lx-tick--br" aria-hidden="true"></span>
         {move || shown.get().map(|image| {
           let queued = state.is_queued(&image.url);
-          let zh = is_zh(state.i18n.get().language());
-          let download_label = if queued {
-            if zh { "已在队列" } else { "Queued" }
-          } else if zh {
-            "下载原图"
-          } else {
-            "Download"
-          };
+          let download_label = if queued { "Queued" } else { "Download" };
           let on_wall = state.wallpaper.get().is_some_and(|(id, _)| id == image.id);
-          let wall_label = if on_wall {
-            if zh { "正在放映" } else { "On the reel" }
-          } else if zh {
-            "送上宽银幕"
-          } else {
-            "Send to reel"
-          };
+          let wall_label = if on_wall { "On the reel" } else { "Send to reel" };
           let for_download = Arc::clone(&image);
           let for_wall = Arc::clone(&image);
           view! {
@@ -552,7 +479,7 @@ pub fn Stage() -> impl IntoView {
                 type="button"
                 class="lx-btn lx-btn--primary"
                 disabled=queued
-                title=if zh { "下载原图 · D" } else { "Download · D" }
+                title="Download · D"
                 on:click=move |_| enqueue(state, Arc::clone(&for_download))
               >
                 <DownloadIcon/>
@@ -563,7 +490,7 @@ pub fn Stage() -> impl IntoView {
                 type="button"
                 class="lx-btn"
                 disabled=on_wall
-                title=if zh { "送上宽银幕 · W" } else { "Send to reel · W" }
+                title="Send to reel · W"
                 on:click=move |_| project(state, &for_wall)
               >
                 <ReelIcon/>
@@ -575,14 +502,13 @@ pub fn Stage() -> impl IntoView {
         })}
         <Show when=move || !state.loading.get() && visible.get().is_empty()>
           {move || {
-            let zh = is_zh(state.i18n.get().language());
             let filtered = state.security.get() && state.tags.get().trim().is_empty();
             view! {
               <div class="lx-empty">
                 <strong>"0"</strong>
                 <p>{if filtered {
-                  if zh { "这一页都在安全过滤之后" } else { "This page is entirely behind the safe filter" }
-                } else if zh { "这些标签没有命中" } else { "Nothing matches these tags" }}</p>
+                  "This page is entirely behind the safe filter"
+                } else { "Nothing matches these tags" }}</p>
                 <button type="button" on:click=move |_| {
                   if state.security.get() && state.tags.get().trim().is_empty() {
                     state.security.set(false);
@@ -590,7 +516,7 @@ pub fn Stage() -> impl IntoView {
                     state.set_tags(String::new());
                   }
                 }>
-                  {if filtered { if zh { "查看全部" } else { "Show all" } } else if zh { "清空标签" } else { "Clear tags" }}
+                  {if filtered { "Show all" } else { "Clear tags" }}
                 </button>
               </div>
             }
@@ -656,7 +582,6 @@ pub fn Stage() -> impl IntoView {
         {move || shown.get().map(|image| {
           let tags = image.tags.clone().unwrap_or_default();
           let chips: Vec<String> = tags.split_whitespace().map(str::to_string).filter(|tag| !tag.is_empty()).collect();
-          let zh = is_zh(state.i18n.get().language());
           view! {
             <div class="lx-dock__meta">
               <div class="lx-meta">
@@ -665,7 +590,7 @@ pub fn Stage() -> impl IntoView {
                   {format!("{}×{}", image.width as u32, image.height as u32)}
                   <em>{format!(" · {}×{} · {}×{}", image.sample_width as u32, image.sample_height as u32, image.preview_width as u32, image.preview_height as u32)}</em>
                 </span>
-                <span class="lx-flag">{if image.security { if zh { "通过" } else { "Clear" } } else if zh { "敏感" } else { "Sensitive" }}</span>
+                <span class="lx-flag">{if image.security { "Clear" } else { "Sensitive" }}</span>
                 {chips.into_iter().map(|tag| {
                   let click = tag.clone();
                   view! {
@@ -683,22 +608,6 @@ pub fn Stage() -> impl IntoView {
           <DownloadList/>
           <Setting/>
           <span class="lx-dock__sep" aria-hidden="true"></span>
-          <button
-            type="button"
-            class="lx-lang"
-            title=move || if is_zh(state.i18n.get().language()) { "Switch to English" } else { "切换到中文" }
-            on:click=move |_| {
-              state.i18n.update(|i18n| {
-                let next = match i18n.language() {
-                  Language::Zh => Language::En,
-                  Language::En => Language::Zh,
-                };
-                *i18n = crate::state::I18n::new(next);
-              });
-            }
-          >
-            {move || if is_zh(state.i18n.get().language()) { "EN" } else { "中文" }}
-          </button>
           <div class="lx-density" role="group" aria-label="Rail density">
             <button
               type="button"
@@ -706,7 +615,7 @@ pub fn Stage() -> impl IntoView {
               aria-pressed=move || (density.get() == Density::Tight).to_string()
               on:click=move |_| density.set(Density::Tight)
             >
-              {move || if is_zh(state.i18n.get().language()) { "密" } else { "Sheet" }}
+              "Sheet"
             </button>
             <button
               type="button"
@@ -714,7 +623,7 @@ pub fn Stage() -> impl IntoView {
               aria-pressed=move || (density.get() == Density::Gallery).to_string()
               on:click=move |_| density.set(Density::Gallery)
             >
-              {move || if is_zh(state.i18n.get().language()) { "扫" } else { "Scan" }}
+              "Scan"
             </button>
             <button
               type="button"
@@ -722,16 +631,14 @@ pub fn Stage() -> impl IntoView {
               aria-pressed=move || (density.get() == Density::Cinema).to_string()
               on:click=move |_| density.set(Density::Cinema)
             >
-              {move || if is_zh(state.i18n.get().language()) { "阔" } else { "Wide" }}
+              "Wide"
             </button>
           </div>
           <span class="lx-keys">
             {move || if narrow.get() {
-              if is_zh(state.i18n.get().language()) { "滑动切图 · 右下角下载" } else { "Swipe · download at the corner" }
-            } else if is_zh(state.i18n.get().language()) {
-              "滚轮或方向键切图，到头翻页"
+              "Swipe · download at the corner"
             } else {
-              "Wheel or arrows step the plate, then turn the page"
+              "Wheel or ↑↓ step the plate, ←→ turn the page"
             }}
           </span>
         </div>

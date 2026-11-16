@@ -336,7 +336,6 @@
   opacity: 0;
 }
 
-.lx-lang,
 .lx-density button,
 .lx-tag,
 .lx-empty button {
@@ -921,8 +920,8 @@
   align-items: center;
   padding: 2px 0;
   line-height: 1;
-  // `json`/`xml` stay lowercase in the payload and in the DOM; the short
-  // uppercase caps here only match the `EN` and `密`/`扫`/`阔` caps beside them.
+  // `json`/`xml` stay lowercase in the payload and in the DOM; the uppercase
+  // caps here match the `Sheet`/`Scan`/`Wide` caps beside them.
   text-transform: uppercase;
 }
 
@@ -964,7 +963,6 @@
 }
 
 .lx-word,
-.lx-lang,
 .lx-density button {
   background: transparent;
   color: var(--lx-ink-mute);
@@ -973,12 +971,10 @@
 }
 
 .lx-word:hover,
-.lx-lang:hover,
 .lx-density button:hover {
   color: var(--lx-ink);
 }
 
-.lx-lang:focus-visible,
 .lx-word:focus-visible,
 .lx-density button:focus-visible {
   outline: 1px solid var(--lx-accent);
@@ -1006,12 +1002,6 @@
   color: var(--lx-ink);
   background: rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 -1px 0 var(--lx-accent);
-}
-
-.lx-lang {
-  color: var(--lx-ink);
-  padding: 2px 0;
-  line-height: 1;
 }
 
 .lx-keys {
@@ -1097,7 +1087,6 @@
 
   .lx-btn,
   .lx-tag,
-  .lx-lang,
   .lx-word,
   .lx-density button,
   .lx-dock .bk-setting__refresh,

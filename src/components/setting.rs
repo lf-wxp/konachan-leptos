@@ -5,15 +5,11 @@ use web_sys::KeyboardEvent;
 
 use crate::components::class_list;
 use crate::model::Mode;
-use crate::state::{Language, use_app_state};
+use crate::state::use_app_state;
 use crate::utils::is_safe;
 
 /// Whether the bundle was compiled with Tauri support.
 const IS_TAURI: bool = cfg!(feature = "tauri");
-
-fn zh(language: Language) -> bool {
-  language == Language::Zh
-}
 
 /// Whether `event` is a key that activates a custom button-like element.
 fn is_activate_key(event: &KeyboardEvent) -> bool {
@@ -68,16 +64,7 @@ pub fn Setting() -> impl IntoView {
               >
                 <span class="bk-setting__fake animation"></span>
                 <span class="lx-word">
-                  {move || {
-                    let zh = zh(state.i18n.get().language());
-                    if state.security.get() {
-                      if zh { "安全" } else { "Safe" }
-                    } else if zh {
-                      "全部"
-                    } else {
-                      "All"
-                    }
-                  }}
+                  {move || if state.security.get() { "Safe" } else { "All" }}
                 </span>
               </div>
             </article>
@@ -110,7 +97,7 @@ pub fn Setting() -> impl IntoView {
         class=loading_class
         role="button"
         tabindex="0"
-        title=move || if zh(state.i18n.get().language()) { "刷新" } else { "Refresh" }
+        title="Refresh"
         on:click=move |_| state.refresh.update(|refresh| *refresh = !*refresh)
         on:keydown=move |event: KeyboardEvent| {
           if is_activate_key(&event) {

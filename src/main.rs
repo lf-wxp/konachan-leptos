@@ -5,7 +5,6 @@
 //! - Waterfall layout display
 //! - Download management with progress tracking
 //! - Animated background and wallpaper
-//! - Multi-language support (English and Chinese)
 
 mod api;
 mod app;

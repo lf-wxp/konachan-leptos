@@ -10,9 +10,7 @@ use crate::model::{Download, Image, ImageState, Mode};
 use crate::utils::{LayoutTile, WaterfallParams, calc_waterfall};
 
 use super::downloads::DownloadAction;
-use super::{
-  I18n, Notice, NoticeAction, NoticeTag, Page, PageAction, ThemeColor, downloads, notices,
-};
+use super::{Notice, NoticeAction, NoticeTag, Page, PageAction, ThemeColor, downloads, notices};
 
 /// Widest column the waterfall layout will produce, in CSS pixels.
 const MAX_COLUMN_WIDTH: f64 = 300.0;
@@ -72,8 +70,6 @@ pub struct AppState {
   pub download_index: Memo<HashMap<String, usize>>,
   /// Notification list rendered in the top layer.
   pub notices: RwSignal<Vec<Notice>>,
-  /// Translation table. Updated when the viewer switches language.
-  pub i18n: RwSignal<I18n>,
 }
 
 impl AppState {
@@ -126,7 +122,6 @@ impl AppState {
       theme: RwSignal::new(ThemeColor::default()),
       wallpaper: RwSignal::new(None),
       notices: RwSignal::new(Vec::new()),
-      i18n: RwSignal::new(I18n::detect()),
     }
   }
 

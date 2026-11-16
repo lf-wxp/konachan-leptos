@@ -6,11 +6,14 @@ use leptos::task::spawn_local;
 use crate::api::download_image;
 use crate::components::RefreshIcon;
 use crate::model::{DownloadProgress, ImageState};
-use crate::state::{DownloadAction, Msg, NoticeTag, use_app_state};
+use crate::state::{DownloadAction, NoticeTag, use_app_state};
 use crate::utils::ParticleProgress;
 
 /// Colour used before the theme has been resolved.
 const DEFAULT_COLOR: &str = "red";
+
+/// Error toast shown when a download fails.
+const DOWNLOAD_ERROR: &str = "Download failed, try again!";
 
 /// Canvas animation revealing the preview as the download progresses.
 #[component]
@@ -93,11 +96,7 @@ pub fn Progress(
           percent: 0.0,
           status: ImageState::Error,
         }));
-        state.notify(
-          state.i18n.get().t(Msg::DownloadError),
-          NoticeTag::Danger,
-          Some(3),
-        );
+        state.notify(DOWNLOAD_ERROR, NoticeTag::Danger, Some(3));
       } else {
         // A browser build finishes the transfer as soon as the download is
         // handed over, so the tile has nothing left to show; the desktop build

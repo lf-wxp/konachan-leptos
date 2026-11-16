@@ -3,7 +3,7 @@
 use leptos::prelude::*;
 use std::time::Duration;
 
-use crate::state::{Language, use_app_state};
+use crate::state::use_app_state;
 
 /// Idle time before the typed tag is applied, in milliseconds.
 const DEBOUNCE: u64 = 250;
@@ -54,13 +54,7 @@ pub fn Search() -> impl IntoView {
       autocomplete="off"
       spellcheck="false"
       aria-label="Tags"
-      placeholder=move || {
-        if state.i18n.get().language() == Language::Zh {
-          "标签，空格交集，-标签 排除"
-        } else {
-          "tags, space = AND, -tag excludes"
-        }
-      }
+      placeholder="tags, space = AND, -tag excludes"
       prop:value=move || value.get()
       on:input=on_input
     />

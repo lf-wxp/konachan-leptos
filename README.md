@@ -36,7 +36,6 @@ This repository contains the **web frontend only**. The backend API server that 
 | 🖼️ **Lightbox Stage** | Full-bleed plate with a film-strip rail, three rail densities, and wheel/arrow/swipe navigation |
 | 📥 **Download Management** | Built-in download queue with progress tracking |
 | 🎨 **Dynamic Wallpaper** | Set images as dynamic wallpapers |
-| 🌍 **i18n Support** | Multi-language support (English & Chinese) |
 | 🎭 **Safe Mode** | Configurable content filtering for safe browsing |
 | 🌓 **Theme Support** | Customizable UI with theme colors |
 | 🔍 **Advanced Search** | Powerful tag-based search and filtering |
