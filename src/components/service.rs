@@ -66,11 +66,7 @@ pub fn Service() -> impl IntoView {
         if REQUEST_SEQ.load(Ordering::Relaxed) == seq && state.loading.get_untracked() {
           leptos::logging::error!("[Service] request {seq} timed out");
           state.loading.set(false);
-          state.notify(
-            GET_LIST_ERROR,
-            NoticeTag::Danger,
-            Some(3),
-          );
+          state.notify(GET_LIST_ERROR, NoticeTag::Danger, Some(3));
         }
       },
       Duration::from_secs(REQUEST_TIMEOUT),
@@ -93,11 +89,7 @@ pub fn Service() -> impl IntoView {
               response.code,
               response.msg.as_deref().unwrap_or("no message")
             );
-            state.notify(
-              GET_LIST_ERROR,
-              NoticeTag::Danger,
-              Some(3),
-            );
+            state.notify(GET_LIST_ERROR, NoticeTag::Danger, Some(3));
             return;
           }
           state.set_images(response.data.images);
@@ -105,11 +97,7 @@ pub fn Service() -> impl IntoView {
         }
         Err(error) => {
           leptos::logging::error!("[Service] could not load posts: {error}");
-          state.notify(
-            GET_LIST_ERROR,
-            NoticeTag::Danger,
-            Some(3),
-          );
+          state.notify(GET_LIST_ERROR, NoticeTag::Danger, Some(3));
         }
       }
     });
