@@ -408,6 +408,7 @@ pub fn Stage() -> impl IntoView {
       <div
         class="lx-plate"
         style=plate_style
+        aria-busy=move || state.loading.get().to_string()
         on:wheel=move |event: WheelEvent| {
           let now = js_sys::Date::now();
           if now - wheel_at.get_untracked() < 160.0 {
@@ -452,13 +453,16 @@ pub fn Stage() -> impl IntoView {
               }
             }
           />
-          // The first request has no plate image yet, so no tile spinner exists
-          // to show for it: the plate would stay blank on the wallpaper until
-          // the posts arrive.
-          <Show when=move || shown.get().is_none() && state.loading.get()>
-            <section class="bk-pending">
-              <div class="loader"></div>
-            </section>
+          // Every request covers the plate: on the first one there is no post to
+          // show yet, and on a page turn the plate keeps the previous post until
+          // the response lands, which without an indicator looked like nothing
+          // had been asked for.
+          <Show when=move || state.loading.get()>
+            <div class="lx-busy" aria-hidden="true">
+              <section class="bk-pending">
+                <div class="loader"></div>
+              </section>
+            </div>
           </Show>
         </div>
         <div class="lx-scan" aria-hidden="true"></div>

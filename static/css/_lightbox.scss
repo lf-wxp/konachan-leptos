@@ -198,6 +198,19 @@
   animation: lx-hero-in 320ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
+// Request in flight: the plate dims and the blades stay centred on it. A page
+// turn keeps the previous post on the plate until the response lands, so
+// without this the room looked frozen while the next page was being fetched.
+// The action cluster paints above it (`z-index: 2`) and the overlay itself is
+// inert, so nothing on the plate becomes unclickable while a request runs.
+.lx-busy {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(8, 9, 10, 0.42);
+  pointer-events: none;
+}
+
 .lx-scan {
   position: absolute;
   left: 0;
@@ -845,9 +858,13 @@
 // Three tiles wide at most. Without the cap the strip's max-content width is
 // every queued tile, which is what used to push the search and settings out of
 // the bar; the overflow now stays inside the strip and scrolls.
+//
+// `flex: 0 0 auto` on purpose: the strip never gives up width. The metadata band
+// (tags) is the only thing in the bar that can shrink, so the queue stays on
+// screen however many tags the post carries.
 .lx-dock .bk-download-list {
   block-size: auto;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-inline-size: 0;
   max-inline-size: 232px;
   margin: 0;
@@ -1040,10 +1057,12 @@
   min-inline-size: 40px;
 }
 
-// A tile here would push the settings and the density switch out of the bar, so
-// the queue stays a desktop surface.
+// The queue keeps its place on the narrow bar as well, two tiles wide. It used
+// to be hidden here, which left a running batch with no progress at all once the
+// window got small; the width it needs now comes out of the metadata band, which
+// scrolls anyway.
 .lx-stage--narrow .lx-dock .bk-download-list {
-  display: none;
+  max-inline-size: 152px;
 }
 
 .lx-stage--narrow .lx-dock .bk-setting {
@@ -1066,16 +1085,80 @@
   display: none;
 }
 
-// The full-size spinner becomes a hairline. It keeps the same ink mix as the
-// tile spinners: the sampled wallpaper colour can be nearly black, which left
-// the bar invisible against the dark shell.
+// Below a full-width window the bar runs out of room, and the drop order is
+// fixed so that what goes is never the queue: first the keyboard hint, then the
+// page shortcuts, then part of the queue's own width. The metadata band always
+// keeps whatever is left, so a post with a wall of tags scrolls its tags instead
+// of pushing the queue off the end of the bar.
+@media (max-width: 1199px) {
+  .lx-dock .bk-search {
+    inline-size: 120px;
+  }
+
+  .lx-dock .bk-download-list {
+    max-inline-size: 152px;
+  }
+
+  .lx-keys {
+    display: none;
+  }
+}
+
+@media (max-width: 979px) {
+  .lx-dock .bk-search {
+    inline-size: 96px;
+  }
+
+  .lx-dock .bk-nav .bk-pager_box {
+    display: none;
+  }
+}
+
+// Phones: the queue narrows to a single tile, still ahead of the settings and
+// the density switch in the drop order. The JS layout signal (`--narrow`) turns
+// on at 760px, so every window this query matches already carries the class and
+// these rules stack on top of it rather than replacing it.
+@media (max-width: 619px) {
+  .lx-stage--narrow .lx-dock .bk-search {
+    inline-size: 56px;
+    min-inline-size: 36px;
+  }
+
+  .lx-stage--narrow .lx-dock .bk-download-list {
+    max-inline-size: 72px;
+  }
+}
+
+// The full-size spinner becomes a hairline in the accent itself. The track
+// keeps a faint tint of the same colour so the empty half of the bar still
+// belongs to the palette instead of reading as a neutral rule.
 .lx-app .bk-loader {
   block-size: 2px;
-  background: color-mix(in srgb, var(--theme-base-color) 45%, var(--lx-ink));
+  background: color-mix(in srgb, var(--theme-base-color) 40%, transparent);
+  overflow: hidden;
+  pointer-events: none;
   z-index: 4;
 }
 
 .lx-app .bk-loader .loader { display: none; }
+
+// A filled bar alone is ambiguous: it is the same 2px at 0% and at 90%, so it
+// reads as a static rule rather than as work in progress. The segment sweeps
+// along the track instead, which is visibly a loader even on a fast response.
+.lx-app .bk-loader::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 28%;
+  background: var(--theme-base-color);
+  animation: lx-loader-sweep 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes lx-loader-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(360%); }
+}
 
 .lx-app .bk-notify {
   z-index: 5;
@@ -1084,6 +1167,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .lx-scan { animation: none; }
+
+  // The sweep is the whole point of the bar, so without motion it becomes a
+  // full-width fill: still visible, still a state, just not moving.
+  .lx-app .bk-loader::after {
+    inline-size: 100%;
+    animation: none;
+    transform: none;
+  }
 
   .lx-btn,
   .lx-tag,
